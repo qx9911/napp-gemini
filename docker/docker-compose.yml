@@ -1,0 +1,62 @@
+# docker/docker-compose.yml
+
+version: '3.8' # Docker Compose 檔案格式版本
+
+services:
+  # 資料庫服務 (MySQL)
+  db:
+    build: ./database # 指定從 docker/database 目錄下的 Dockerfile 構建映像檔
+    container_name: napp_mysql # 容器名稱
+    ports:
+      - "3306:3306" # 將主機的 3306 端口映射到容器的 3306 端口
+    environment:
+      # 設定 MySQL 服務的環境變數，這些會覆寫 Dockerfile 中的預設值
+      # 請確保這些值與 backend/.env 和 database/init.sql 中的設定一致
+      MYSQL_ROOT_PASSWORD: your_root_password_here # MySQL root 帳號的密碼
+      MYSQL_DATABASE: napp_db                     # 資料庫名稱
+      MYSQL_USER: napp_user                       # 資料庫使用者名稱
+      MYSQL_PASSWORD: napp_password               # 資料庫使用者密碼
+    volumes:
+      # 將主機上的 db_data 具名卷掛載到容器的 /var/lib/mysql
+      # 這樣可以持久化資料庫數據，即使容器被刪除，數據也不會丟失
+      - db_data:/var/lib/mysql
+    restart: always # 容器退出時總是重新啟動
+
+  # 後端服務 (Node.js Express API)
+  backend:
+    build: ./backend # 指定從 docker/backend 目錄下的 Dockerfile 構建映像檔
+    container_name: napp_backend # 容器名稱
+    ports:
+      - "3000:3000" # 將主機的 3000 端口映射到容器的 3000 端口
+    environment:
+      # 後端應用程式的環境變數
+      # 這些變數會被 Node.js 應用程式讀取
+      PORT: 3000
+      DB_HOST: db # 資料庫主機名稱，這裡使用 Docker Compose 服務名稱 'db'
+      DB_NAME: napp_db
+      DB_USER: napp_user
+      DB_PASSWORD: napp_password
+      JWT_SECRET: your_jwt_secret_key_here # JWT 密鑰，請務必替換為安全的字串
+      JWT_EXPIRES_IN: 1h
+      EMAIL_HOST: your_smtp_host # 您的 SMTP 主機，例如 smtp.gmail.com
+      EMAIL_PORT: 587 # 您的 SMTP 端口，例如 587 或 465
+      EMAIL_SECURE: 'false' # 如果端口是 465 則為 'true'，否則為 'false' (字串形式)
+      EMAIL_USER: your_email@example.com # 您的發送郵件帳號
+      EMAIL_PASS: your_email_password # 您的發送郵件密碼或應用程式專用密碼
+      FRONTEND_URL: http://localhost:8000 # 前端應用程式的 URL (用於重設密碼連結)
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin123
+      ADMIN_EMAIL: admin@example.com
+    depends_on:
+      - db # 確保 db 服務在 backend 服務啟動前啟動
+    volumes:
+      # 掛載本地後端程式碼到容器中，方便開發時即時更新
+      # 在生產環境中，通常不會掛載代碼，而是直接構建到映像檔中
+      - ./backend:/app
+      # 掛載 .env 檔案到容器中，讓應用程式可以讀取環境變數
+      - ./backend/.env:/app/.env
+    restart: always # 容器退出時總是重新啟動
+
+# 定義具名卷，用於持久化資料庫數據
+volumes:
+  db_data:
