@@ -1,15 +1,15 @@
 # Flutter / Dart -------------------------------------------------------------
-# See https://dart.dev/guides/libraries/private-files#pubspeclock
-# and https://flutter.dev/docs/development/tools/sdk/files#flutter-create
+# 參考: https://dart.dev/guides/libraries/private-files#pubspeclock
+# 以及 https://flutter.dev/docs/development/tools/sdk/files#flutter-create
 #
-# Specific to Flutter
+# Flutter 特定檔案
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
 .dart_tool/
 build/
 
-# Flutter builds for specific platforms
+# Flutter 各平台編譯產物
 /ios/Flutter/App.framework
 /ios/Flutter/Flutter.framework
 /ios/Flutter/engine
@@ -17,14 +17,15 @@ build/
 /ios/Flutter/Generated.xcconfig
 /ios/Flutter/ephemeral_plugins.xcconfig
 /ios/Pods/
-/ios/Runner.xcworkspace/ # Also in general section
+/ios/Runner.xcworkspace/ # 也包含在通用區段
 /ios/Runner/GeneratedPluginRegistrant.*
 /android/.gradle/
 /android/app/build/
 /android/build/
 /android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
-/android/key.properties # Local signing keys
-/android/local.properties # Contains SDK path, should not be versioned
+/android/key.properties # 本地簽名金鑰
+/android/local.properties # 包含 SDK 路徑，不應版本控制
+
 /linux/flutter/generated_plugins.cmake
 /linux/flutter/generated_plugin_registrant.cc
 /linux/flutter/generated_plugin_registrant.h
@@ -32,7 +33,7 @@ build/
 /macos/Flutter/Flutter-Framework.framework/
 /macos/Flutter/ephemeral_plugins.xcconfig
 /macos/Pods/
-/macos/Runner.xcworkspace/ # Also in general section
+/macos/Runner.xcworkspace/ # 也包含在通用區段
 /web/build/
 /windows/flutter/generated_plugins.cmake
 /windows/flutter/generated_plugin_registrant.cc
@@ -43,22 +44,22 @@ build/
 /windows/flutter/ephemeral/
 /windows/CMakeLists.txt.user
 
-# Flutter test results
+# Flutter 測試結果
 coverage/
 test_private.html
 
 # Python ---------------------------------------------------------------------
-# Byte-compiled / optimized / DLL files
+# 位元組碼 / 優化檔案 / DLL 檔案
 __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
+# C 擴充套件
 *.so
 
-# Distribution / packaging
+# 發行 / 打包
 .Python
-build/
+build/ # Python 的 build 目錄也可能與 Flutter 的重疊，規則通用
 develop-eggs/
 dist/
 downloads/
@@ -78,16 +79,16 @@ share/python-wheels/
 MANIFEST
 
 # PyInstaller
-# Usually these files are written by a python script from a template
-# before PyInstaller builds the exe, so as to inject date/other infos into it.
+# 通常這些檔案是由 python 腳本從模板寫入，
+# 然後 PyInstaller 再建立 exe，以便注入日期/其他資訊。
 *.manifest
 *.spec
 
-# Installer logs
+# 安裝程式日誌
 pip-log.txt
 pip-delete-this-directory.txt
 
-# Unit test / coverage reports
+# 單元測試 / 覆蓋率報告
 htmlcov/
 .tox/
 .nox/
@@ -100,25 +101,25 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
-# Translations
+# 翻譯檔案
 *.mo
 *.pot
 
-# Django stuff:
+# Django 相關:
 *.log
-local_settings.py
-db.sqlite3
+local_settings.py # 本地設定，通常包含敏感資訊
+db.sqlite3        # Django 預設資料庫檔案
 db.sqlite3-journal
 
-# Flask stuff:
-instance/
+# Flask 相關:
+instance/          # Flask 的實例資料夾，可能包含設定或資料庫
 .webassets-cache
 
-# Scrapy stuff:
+# Scrapy 相關:
 .scrapy
 
-# Environments
-.env
+# 虛擬環境
+.env              # 環境變數檔案 (通常包含密碼等)
 .venv
 env/
 venv/
@@ -126,48 +127,48 @@ ENV/
 env.bak/
 venv.bak/
 
-# Spyder project settings
+# Spyder 專案設定
 .spyderproject
 .spyproject
 
-# Rope project settings
+# Rope 專案設定
 .ropeproject
 
-# mkdocs documentation
+# mkdocs 文件
 /site
 
-# mypy
+# mypy 類型檢查快取
 .mypy_cache/
 .dmypy.json
 dmypy.json
 
-# Pyre type checker
+# Pyre 類型檢查器
 .pyre/
 
-# Environments - Conda
+# Conda 環境設定
 .condarc
 
-# MySQL / Database related ---------------------------------------------------
-# Ignore general database dump files (use with caution, ensure backups are elsewhere)
+# MySQL / 資料庫相關 ---------------------------------------------------
+# 忽略通用的資料庫傾印檔案 (謹慎使用，確保備份在其他地方)
 # *.sql
 # *.dump
 # *.sql.gz
 # *.dump.gz
 
-# MySQL specific files (often found in data directories, which should NOT be in git)
-# If your MySQL data directory is somehow within your project, add its name:
-# e.g. mysql_data/
+# MySQL 特定檔案 (通常在資料目錄中，不應納入 Git)
+# 如果您的 MySQL 資料目錄意外地在專案內，請加入其名稱:
+# 例如: mysql_data/
 
-# Environment variables file (often contains DB credentials)
-.env # Already covered in Python section, but good to reiterate
+# 環境變數檔案 (通常包含資料庫憑證，已在 Python 區段涵蓋)
+# .env
 
-# Secrets files
+# 密鑰檔案
 secrets.yml
 *.pem
 *.key
 
-# IDE / Editor specific ------------------------------------------------------
-# General
+# IDE / 編輯器特定檔案 ------------------------------------------------------
+# 通用
 .DS_Store
 .DS_Store?
 ._*
@@ -209,18 +210,17 @@ nbactions.xml
 build.xml
 manifest.mf
 
-# Operating System files
-*.swp # Vi/Vim swap files
-*~ # Backup files
+# 作業系統檔案
+*.swp # Vi/Vim 交換檔案
+*~    # 備份檔案
 *.bak
 *.tmp
 
-# Log files
+# 日誌檔案
 *.log
 logs/
 
-# Pubspec lock file (sometimes versioned, sometimes not, depends on team policy)
-# If you want to ensure everyone uses the exact same package versions, commit it.
-# If you want more flexibility and rely on pubspec.yaml version constraints, ignore it.
-# For Flutter apps, it's generally recommended to commit pubspec.lock.
-# pubspec.lock
+# Pubspec lock 檔案 (依團隊政策決定是否版本控制)
+# 如果希望團隊成員使用完全相同的套件版本，則應提交它。
+# Flutter 應用程式通常建議提交 pubspec.lock。
+# pubspec.lock # 註解掉表示預設會追蹤此檔案
