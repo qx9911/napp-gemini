@@ -1,50 +1,45 @@
-# /opt/napp-gemini/docker/docker-compose.yml
-
-version: '3.8'
+# version: '3.8' # <--- 可以刪除此行
 
 services:
-  # 資料庫服務 (MySQL)
-  db: # 服務名稱 'db'
+  db:
     build:
-      context: ../ # 相對於 docker-compose.yml (即 docker/ 目錄)，向上到專案根目錄 napp-gemini/
-      dockerfile: ./docker/database/Dockerfile # 相對於 context (napp-gemini/)，指向 napp-gemini/docker/database/Dockerfile
+      context: ../
+      dockerfile: ./docker/database/Dockerfile
     container_name: napp_mysql
     ports:
       - "3306:3306"
     env_file:
-      - ../.env # 從專案根目錄 (napp-gemini/) 的 .env 檔案載入環境變數
+      - ../.env
     volumes:
-      - db_data:/var/lib/mysql
-      # 確保您的 init.sql 路徑正確，這是相對於 docker-compose.yml 的路徑
-      # 如果 init.sql 在 /opt/napp-gemini/database/init.sql
+      - db_data:/var/lib/mysql # <--- 使用 db_data
       - ../database/init.sql:/docker-entrypoint-initdb.d/init.sql
     restart: always
-    healthcheck: # 來自 2fde534 版本，用於檢查資料庫健康狀態
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$<span class="math-inline">MYSQL\_USER", "\-p</span>$MYSQL_PASSWORD"] # $$ 用於 Docker Compose 變數轉義
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$MYSQL_USER", "-p$$MYSQL_PASSWORD"]
       timeout: 20s
       retries: 10
       start_period: 30s
       interval: 5s
 
-  # 後端服務 (Python Flask API)
   backend:
     build:
-      context: ../ # 相對於 docker-compose.yml (即 docker/ 目錄)，向上到專案根目錄 napp-gemini/
-      dockerfile: ./docker/backend/Dockerfile # 相對於 context (napp-gemini/)，指向 napp-gemini/docker/backend/Dockerfile
+      context: ../
+      dockerfile: ./docker/backend/Dockerfile
     container_name: napp_backend
     ports:
-      - "5000:5000" # 假設您的 Python API 在容器內監聽 5000 port
+      - "5000:5000"
     env_file:
-      - ../.env # 從專案根目錄 (napp-gemini/) 的 .env 檔案載入環境變數
+      - ../.env
     depends_on:
-      db: # 確保 db 服務健康後再啟動 backend
+      db:
         condition: service_healthy
     volumes:
-      # 將本地 backend 程式碼掛載到容器，方便開發
-      # 路徑相對於 docker-compose.yml
       - ../backend:/app
-    # 使用 2fde534 版本中的 command，確保 Flask 正確啟動
     command: ["flask", "--app", "app:create_app", "run", "--host=0.0.0.0", "--port=5000"]
     restart: always
 
-  # (可選) 前端
+  # frontend: # 如果有前端服務
+  #   # ...
+
+volumes: # <--- 確保這個在頂層，並且與 services: 同級
+  db_data: {}
