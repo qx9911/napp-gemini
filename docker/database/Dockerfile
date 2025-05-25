@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # docker/database/Dockerfile
 
 # 使用 MySQL 8.0 官方映像檔作為基礎映像檔
@@ -21,3 +22,11 @@ EXPOSE 3306
 # CMD 指令由基礎映像檔 (mysql:8.0) 提供，無需在此處額外指定
 # 基礎映像檔的 ENTRYPOINT 會自動處理 MySQL 服務的啟動和 init.sql 的執行
 
+=======
+    FROM mysql:8.0
+
+    COPY database/init.sql /docker-entrypoint-initdb.d/
+
+    EXPOSE 3306
+    
+>>>>>>> 2fde534 (Add comprehensive .gitignore and initial project files)

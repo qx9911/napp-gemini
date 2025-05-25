@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(255) NOT NULL,
     username VARCHAR(255) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
+<<<<<<< HEAD
     password VARCHAR(255) NOT NULL, -- 儲存雜湊後的密碼
     role ENUM('admin', 'user') DEFAULT 'user' NOT NULL,
     resetToken VARCHAR(255) NULL,       -- 密碼重設令牌
@@ -32,3 +33,15 @@ CREATE TABLE IF NOT EXISTS users (
 -- 請替換 '$2b$10$YOUR_BCRYPT_HASH_FOR_ADMIN123' 為 'admin123' 的 bcrypt 雜湊值
 -- 更好的做法是讓後端 (server.js) 處理預設管理員的創建，就像我們在 server.js 中所做的那樣。
 
+=======
+    password_hash VARCHAR(255) NOT NULL, -- 儲存雜湊後的密碼
+    role ENUM('admin', 'user') DEFAULT 'user' NOT NULL,
+    reset_token VARCHAR(255) NULL,       -- 密碼重設令牌
+    reset_token_expires DATETIME NULL,    -- 密碼重設令牌過期時間
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 注意：預設管理員帳號 (admin / admin123) 的插入邏輯已在 Python 後端 app.py 中處理。
+-- 此處僅負責建立表結構。
+>>>>>>> 2fde534 (Add comprehensive .gitignore and initial project files)

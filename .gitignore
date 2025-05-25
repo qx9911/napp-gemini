@@ -1,0 +1,226 @@
+# Flutter / Dart -------------------------------------------------------------
+# See https://dart.dev/guides/libraries/private-files#pubspeclock
+# and https://flutter.dev/docs/development/tools/sdk/files#flutter-create
+#
+# Specific to Flutter
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.dart_tool/
+build/
+
+# Flutter builds for specific platforms
+/ios/Flutter/App.framework
+/ios/Flutter/Flutter.framework
+/ios/Flutter/engine
+/ios/Flutter/flutter_assets/
+/ios/Flutter/Generated.xcconfig
+/ios/Flutter/ephemeral_plugins.xcconfig
+/ios/Pods/
+/ios/Runner.xcworkspace/ # Also in general section
+/ios/Runner/GeneratedPluginRegistrant.*
+/android/.gradle/
+/android/app/build/
+/android/build/
+/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+/android/key.properties # Local signing keys
+/android/local.properties # Contains SDK path, should not be versioned
+/linux/flutter/generated_plugins.cmake
+/linux/flutter/generated_plugin_registrant.cc
+/linux/flutter/generated_plugin_registrant.h
+/linux/ephemeral/
+/macos/Flutter/Flutter-Framework.framework/
+/macos/Flutter/ephemeral_plugins.xcconfig
+/macos/Pods/
+/macos/Runner.xcworkspace/ # Also in general section
+/web/build/
+/windows/flutter/generated_plugins.cmake
+/windows/flutter/generated_plugin_registrant.cc
+/windows/flutter/generated_plugin_registrant.h
+/windows/runner/Debug/
+/windows/runner/Profile/
+/windows/runner/Release/
+/windows/flutter/ephemeral/
+/windows/CMakeLists.txt.user
+
+# Flutter test results
+coverage/
+test_private.html
+
+# Python ---------------------------------------------------------------------
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+# Usually these files are written by a python script from a template
+# before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Environments - Conda
+.condarc
+
+# MySQL / Database related ---------------------------------------------------
+# Ignore general database dump files (use with caution, ensure backups are elsewhere)
+# *.sql
+# *.dump
+# *.sql.gz
+# *.dump.gz
+
+# MySQL specific files (often found in data directories, which should NOT be in git)
+# If your MySQL data directory is somehow within your project, add its name:
+# e.g. mysql_data/
+
+# Environment variables file (often contains DB credentials)
+.env # Already covered in Python section, but good to reiterate
+
+# Secrets files
+secrets.yml
+*.pem
+*.key
+
+# IDE / Editor specific ------------------------------------------------------
+# General
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+shelf/ # IntelliJ IDEA 2020.1+
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Atom
+.atom/
+*LOCK.json
+
+# Eclipse
+.project
+.classpath
+.settings/
+.metadata/
+
+# Netbeans
+nbproject/
+nbactions.xml
+build.xml
+manifest.mf
+
+# Operating System files
+*.swp # Vi/Vim swap files
+*~ # Backup files
+*.bak
+*.tmp
+
+# Log files
+*.log
+logs/
+
+# Pubspec lock file (sometimes versioned, sometimes not, depends on team policy)
+# If you want to ensure everyone uses the exact same package versions, commit it.
+# If you want more flexibility and rely on pubspec.yaml version constraints, ignore it.
+# For Flutter apps, it's generally recommended to commit pubspec.lock.
+# pubspec.lock

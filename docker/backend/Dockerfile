@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # docker/backend/Dockerfile
 
 # 使用 Node.js 18 的 Alpine Linux 版本作為基礎映像檔
@@ -31,3 +32,25 @@ EXPOSE 3000
 # 運行 npm start，它會執行 package.json 中定義的 "start" 腳本 (node server.js)
 CMD ["npm", "start"]
 
+=======
+FROM python:3.9-slim-buster
+
+WORKDIR /app
+
+COPY backend/requirements.txt ./
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY backend/. .
+
+ENV FLASK_RUN_PORT=5000
+ENV FLASK_APP=app.py
+
+EXPOSE 5000
+
+# 移除 COPY entrypoint.sh 和相關的 RUN chmod +x / RUN dos2unix
+# 移除 ENTRYPOINT 指令
+
+# 更明確地指定 Flask 應用程式的載入方式
+CMD ["flask", "--app", "app:create_app", "run", "--host=0.0.0.0", "--port=5000"]
+>>>>>>> 2fde534 (Add comprehensive .gitignore and initial project files)

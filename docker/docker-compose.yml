@@ -1,10 +1,15 @@
 # docker/docker-compose.yml
 
+<<<<<<< HEAD
 version: '3.8' # Docker Compose 檔案格式版本
+=======
+version: '3.8'
+>>>>>>> 2fde534 (Add comprehensive .gitignore and initial project files)
 
 services:
   # 資料庫服務 (MySQL)
   db:
+<<<<<<< HEAD
     build: ./database # 指定從 docker/database 目錄下的 Dockerfile 構建映像檔
     container_name: napp_mysql # 容器名稱
     ports:
@@ -56,6 +61,44 @@ services:
       # 掛載 .env 檔案到容器中，讓應用程式可以讀取環境變數
       - ./backend/.env:/app/.env
     restart: always # 容器退出時總是重新啟動
+=======
+    build:
+      context: ../
+      dockerfile: ./docker/database/Dockerfile
+    container_name: napp_mysql
+    ports:
+      - "3306:3306"
+    env_file:
+      - ../.env
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$MYSQL_USER", "-p$$MYSQL_PASSWORD"]
+      timeout: 20s
+      retries: 10
+      start_period: 30s
+      interval: 5s
+
+  # 後端服務 (Python Flask API)
+  backend:
+    build:
+      context: ../
+      dockerfile: ./docker/backend/Dockerfile
+    container_name: napp_backend
+    ports:
+      - "5000:5000"
+    env_file:
+      - ../.env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ../backend:/app # 再次確認：用於開發時熱重載
+    # 恢復為正常的啟動命令，並自動運行 Flask 應用程式
+    command: ["flask", "--app", "app:create_app", "run", "--host=0.0.0.0", "--port=5000"] # <-- 恢復為 Flask 啟動命令
+    restart: always # 確保容器在退出時自動重啟
+>>>>>>> 2fde534 (Add comprehensive .gitignore and initial project files)
 
 # 定義具名卷，用於持久化資料庫數據
 volumes:
