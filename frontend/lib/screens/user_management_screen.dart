@@ -1,10 +1,9 @@
 // frontend/lib/screens/user_management_screen.dart
-
-import 'package:flutter/material.dart'; // 引入 Flutter Material 設計
-import 'package:provider/provider.dart'; // 引入 Provider
-import '../api/api_service.dart'; // 引入 API 服務
-import '../providers/auth_provider.dart'; // 引入 AuthProvider
-import '../widgets/custom_alert_dialog.dart'; // 引入自訂提示框
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../api/api_service.dart'; // 確保此檔案存在且路徑正確
+import '../providers/auth_provider.dart'; // User 模型現在定義在 auth_provider.dart 中
+import '../widgets/custom_alert_dialog.dart'; // 確保此檔案存在且路徑正確
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -32,18 +31,38 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     });
     try {
       final response = await ApiService.get('users'); // 呼叫 API 獲取使用者列表
-      setState(() {
-        _users = (response as List).map((json) => User.fromJson(json)).toList(); // 解析回應為 User 列表
-      });
+      if (mounted) { // 異步操作後檢查 widget 是否還在樹中
+        setState(() {
+          // 解析回應為 User 列表, 確保 response['users'] 是列表且元素是 Map
+          if (response != null && response['users'] is List) {
+            _users = (response['users'] as List)
+                .map((json) => User.fromJson(json as Map<String, dynamic>))
+                .toList();
+          } else {
+            _users = []; // 如果回應格式不對或沒有使用者資料，則清空
+             _errorMessage = '無法獲取使用者資料或格式不正確';
+          }
+        });
+      }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString().replaceFirst('Exception: ', ''); // 儲存錯誤訊息
-      });
-      CustomAlertDialog.show(context, '錯誤', _errorMessage!); // 顯示錯誤提示
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString().replaceFirst('Exception: ', ''); // 儲存錯誤訊息
+        });
+        showDialog( // 修改 CustomAlertDialog 的呼叫方式
+          context: context,
+          builder: (ctx) => CustomAlertDialog(
+            title: '錯誤',
+            content: _errorMessage!,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -52,22 +71,23 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final TextEditingController nameController = TextEditingController(text: user?.name);
     final TextEditingController usernameController = TextEditingController(text: user?.username);
     final TextEditingController emailController = TextEditingController(text: user?.email);
-    final TextEditingController passwordController = TextEditingController(); // 新增時必填，編輯時可選
-    String? selectedRole = user?.role; // 預設角色
+    final TextEditingController passwordController = TextEditingController();
+    String? selectedRole = user?.role ?? 'user'; // 如果是新增，預設為 'user'
 
-    final _formKey = GlobalKey<FormState>(); // 表單驗證 Key
-    bool _obscureText = true; // 密碼顯示/隱藏
+    final formKey = GlobalKey<FormState>(); // 表單驗證 Key (移到這裡，每次打開 dialog 都是新的 key)
+    bool obscureText = true; // 密碼顯示/隱藏 (移到這裡)
 
     await showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setStateSB) { // 使用 StatefulBuilder 來更新 Dialog 內部狀態
+      barrierDismissible: false, // 點擊外部不關閉對話框
+      builder: (BuildContext dialogContext) { // 使用不同的 context 名稱
+        return StatefulBuilder( // 使用 StatefulBuilder 來更新 Dialog 內部狀態
+          builder: (context, setStateSB) {
             return AlertDialog(
-              title: Text(user == null ? '新增使用者' : '編輯使用者'),
+              title: Text(user == null ? '新增使用者' : '編輯使用者資訊'),
               content: SingleChildScrollView(
                 child: Form(
-                  key: _formKey,
+                  key: formKey, // 使用這裡的 formKey
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -82,6 +102,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       TextFormField(
                         controller: usernameController,
                         decoration: const InputDecoration(labelText: '帳號'),
+                        readOnly: user != null, // 編輯時帳號通常不可修改
                         validator: (value) {
                           if (value == null || value.isEmpty) return '請輸入帳號';
                           return null;
@@ -90,29 +111,31 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       TextFormField(
                         controller: emailController,
                         decoration: const InputDecoration(labelText: 'Email'),
+                        keyboardType: TextInputType.emailAddress,
                         validator: (value) {
                           if (value == null || value.isEmpty) return '請輸入 Email';
                           if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return '請輸入有效的 Email';
                           return null;
                         },
                       ),
-                      if (user == null) // 新增時才顯示密碼欄位
+                      if (user == null) // 新增時才需要輸入密碼
                         TextFormField(
                           controller: passwordController,
-                          obscureText: _obscureText,
+                          obscureText: obscureText,
                           decoration: InputDecoration(
                             labelText: '密碼',
                             suffixIcon: IconButton(
-                              icon: Icon(_obscureText ? Icons.visibility : Icons.visibility_off),
+                              icon: Icon(obscureText ? Icons.visibility : Icons.visibility_off),
                               onPressed: () {
-                                setStateSB(() { // 更新 StatefulBuilder 的狀態
-                                  _obscureText = !_obscureText;
+                                setStateSB(() {
+                                  obscureText = !obscureText;
                                 });
                               },
                             ),
                           ),
                           validator: (value) {
                             if (user == null && (value == null || value.isEmpty)) return '請輸入密碼';
+                            if (user == null && value != null && value.length < 6) return '密碼至少需要6個字元';
                             return null;
                           },
                         ),
@@ -124,7 +147,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           DropdownMenuItem(value: 'admin', child: Text('管理員')),
                         ],
                         onChanged: (value) {
-                          setStateSB(() { // 更新 StatefulBuilder 的狀態
+                          setStateSB(() {
                             selectedRole = value;
                           });
                         },
@@ -139,37 +162,55 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => Navigator.of(dialogContext).pop(), // 使用 dialogContext
                   child: const Text('取消'),
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    if (_formKey.currentState!.validate()) {
+                    if (formKey.currentState!.validate()) {
+                      final Map<String, dynamic> userData = {
+                        'name': nameController.text,
+                        'username': usernameController.text,
+                        'email': emailController.text,
+                        'role': selectedRole,
+                      };
+                      if (user == null) { // 新增使用者
+                        userData['password'] = passwordController.text;
+                      }
+
+                      _setLoading(true); // 開始執行異步操作前設定 loading
                       try {
                         if (user == null) {
-                          // 新增使用者
-                          await ApiService.post('users', {
-                            'name': nameController.text,
-                            'username': usernameController.text,
-                            'email': emailController.text,
-                            'password': passwordController.text,
-                            'role': selectedRole,
-                          });
-                          CustomAlertDialog.show(context, '成功', '使用者新增成功！');
+                          await ApiService.post('users', userData);
+                          if (mounted) {
+                             showDialog(
+                                context: context, // 這裡用 widget 的 context
+                                builder: (ctx) => const CustomAlertDialog(title: '成功', content: '使用者新增成功！')
+                             );
+                          }
                         } else {
-                          // 編輯使用者
-                          await ApiService.put('users/${user.id}', {
-                            'name': nameController.text,
-                            'username': usernameController.text,
-                            'email': emailController.text,
-                            'role': selectedRole,
-                          });
-                          CustomAlertDialog.show(context, '成功', '使用者資訊更新成功！');
+                          await ApiService.put('users/${user.id}', userData);
+                           if (mounted) {
+                             showDialog(
+                                context: context, // 這裡用 widget 的 context
+                                builder: (ctx) => const CustomAlertDialog(title: '成功', content: '使用者資訊更新成功！')
+                             );
+                          }
                         }
-                        Navigator.of(context).pop(); // 關閉表單
+                        Navigator.of(dialogContext).pop(); // 使用 dialogContext 關閉表單
                         _fetchUsers(); // 重新整理使用者列表
                       } catch (e) {
-                        CustomAlertDialog.show(context, '操作失敗', e.toString().replaceFirst('Exception: ', ''));
+                        if (mounted) {
+                          showDialog(
+                            context: context, // 這裡用 widget 的 context
+                            builder: (ctx) => CustomAlertDialog(
+                              title: '操作失敗',
+                              content: e.toString().replaceFirst('Exception: ', ''),
+                            ),
+                          );
+                        }
+                      } finally {
+                         _setLoading(false); // 異步操作結束後設定 loading
                       }
                     }
                   },
@@ -185,20 +226,19 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   // 刪除使用者
   Future<void> _deleteUser(int userId) async {
-    // 顯示確認對話框
     final bool? confirm = await showDialog<bool>(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) { // 使用不同的 context 名稱
         return AlertDialog(
           title: const Text('確認刪除'),
           content: const Text('您確定要刪除此使用者嗎？此操作無法復原。'),
           actions: <Widget>[
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
               child: const Text('取消'),
             ),
             TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('刪除'),
             ),
@@ -208,29 +248,47 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
 
     if (confirm == true) {
-      setState(() {
-        _isLoading = true;
-      });
+      _setLoading(true);
       try {
-        await ApiService.delete('users/$userId'); // 呼叫 API 刪除使用者
-        CustomAlertDialog.show(context, '成功', '使用者已成功刪除！');
-        _fetchUsers(); // 重新整理使用者列表
+        await ApiService.delete('users/$userId');
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => const CustomAlertDialog(
+              title: '成功',
+              content: '使用者已成功刪除！',
+            ),
+          );
+        }
+        _fetchUsers();
       } catch (e) {
-        CustomAlertDialog.show(context, '刪除失敗', e.toString().replaceFirst('Exception: ', ''));
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => CustomAlertDialog(
+              title: '刪除失敗',
+              content: e.toString().replaceFirst('Exception: ', ''),
+            ),
+          );
+        }
       } finally {
-        setState(() {
-          _isLoading = false;
-        });
+        _setLoading(false);
       }
     }
   }
 
+  void _setLoading(bool value) {
+     if (!mounted) return; // 如果 widget 已被 dispose，則不執行 setState
+    setState(() {
+      _isLoading = value;
+    });
+  }
+
+
   @override
   Widget build(BuildContext context) {
-    // 獲取 AuthProvider 實例，用於判斷是否為管理員
-    final authProvider = Provider.of<AuthProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false); // listen: false 通常用於 initState 或按鈕回呼
 
-    // 如果不是管理員，直接顯示無權限訊息
     if (!authProvider.isAdmin) {
       return Scaffold(
         appBar: AppBar(
@@ -251,68 +309,103 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         title: const Text('使用者管理'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh), // 重新整理按鈕
-            onPressed: _fetchUsers,
+            icon: const Icon(Icons.refresh),
+            onPressed: _isLoading ? null : _fetchUsers, // 載入時禁用
           ),
           IconButton(
-            icon: const Icon(Icons.add), // 新增使用者按鈕
-            onPressed: () => _showUserForm(),
+            icon: const Icon(Icons.add),
+            onPressed: _isLoading ? null : () => _showUserForm(), // 載入時禁用
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator()) // 載入時顯示進度條
+      body: _isLoading && _users.isEmpty // 初始載入時顯示進度條
+          ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? Center(child: Text('載入失敗: $_errorMessage')) // 顯示錯誤訊息
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('載入失敗: $_errorMessage', style: const TextStyle(color: Colors.red, fontSize: 16)),
+                        const SizedBox(height: 20),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('重試'),
+                          onPressed: _fetchUsers,
+                        )
+                      ],
+                    ),
+                  )
+                )
               : _users.isEmpty
-                  ? const Center(child: Text('沒有使用者資料。')) // 沒有資料時顯示提示
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(8.0),
-                      itemCount: _users.length,
-                      itemBuilder: (context, index) {
-                        final user = _users[index];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 8.0),
-                          elevation: 4.0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.0),
-                          ),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.blueAccent,
-                              child: Text(
-                                user.username[0].toUpperCase(),
-                                style: const TextStyle(color: Colors.white),
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('沒有使用者資料。', style: TextStyle(fontSize: 16)),
+                          const SizedBox(height: 20),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('重新整理'),
+                            onPressed: _fetchUsers,
+                          )
+                        ],
+                      )
+                    )
+                  : RefreshIndicator( // 添加下拉刷新
+                      onRefresh: _fetchUsers,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(8.0),
+                        itemCount: _users.length,
+                        itemBuilder: (context, index) {
+                          final user = _users[index];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(vertical: 8.0),
+                            elevation: 3.0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10.0),
+                            ),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: Theme.of(context).colorScheme.secondary,
+                                child: Text(
+                                  user.username.isNotEmpty ? user.username[0].toUpperCase() : 'U',
+                                  style: const TextStyle(color: Colors.white),
+                                ),
                               ),
+                              title: Text(
+                                user.name,
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('帳號: ${user.username}'),
+                                  Text('Email: ${user.email}'),
+                                  Text('權限: ${user.role == 'admin' ? '管理員' : '使用者'}'),
+                                ],
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.edit, color: Theme.of(context).colorScheme.primary),
+                                    tooltip: '編輯',
+                                    onPressed: _isLoading ? null : () => _showUserForm(user: user),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
+                                    tooltip: '刪除',
+                                    onPressed: _isLoading ? null : () => _deleteUser(user.id),
+                                  ),
+                                ],
+                              ),
+                              onTap: _isLoading ? null : () => _showUserForm(user: user), // 點擊列表項也可編輯
                             ),
-                            title: Text(
-                              user.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('帳號: ${user.username}'),
-                                Text('Email: ${user.email}'),
-                                Text('權限: ${user.role == 'admin' ? '管理員' : '使用者'}'),
-                              ],
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.edit, color: Colors.blue),
-                                  onPressed: () => _showUserForm(user: user), // 編輯使用者
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.red),
-                                  onPressed: () => _deleteUser(user.id), // 刪除使用者
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
     );
   }

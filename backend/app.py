@@ -5,6 +5,7 @@ from config import Config
 from models import db, User
 from utils.email_service import mail
 from flask_jwt_extended import JWTManager
+from flask_cors import CORS # 導入 CORS
 from routes.auth import auth_bp
 from routes.users import users_bp
 import os

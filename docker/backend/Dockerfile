@@ -13,7 +13,7 @@ COPY backend/. .
 # ENV FLASK_RUN_PORT=5000
 # 但通常這些會在 .env 檔案中管理，並透過 docker-compose.yml 的 env_file 傳入
 
-EXPOSE 5000 # 假設 Flask 監聽 5000
+EXPOSE 5000 
 
 # 恢復正常的 Flask 啟動命令
 # 確保 app:create_app 與您 Flask 應用的實際入口點和工廠函式名稱一致

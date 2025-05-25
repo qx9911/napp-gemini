@@ -10,3 +10,4 @@ python-dotenv==1.0.1
 Flask-Mail==0.9.1
 cryptography==42.0.5 # <-- 新增：用於 MySQL 8.0 的 caching_sha2_password 認證方法
 # gunicorn==22.0.0
+Flask-CORS

@@ -1,11 +1,16 @@
 // frontend/lib/providers/auth_provider.dart
 
-import 'package:flutter/material.dart'; // 引入 Flutter Material 設計
-import 'package:shared_preferences/shared_preferences.dart'; // 用於本地儲存 JWT Token
-import '../api/api_service.dart'; // 引入 API 服務
-import '../widgets/custom_alert_dialog.dart'; // 引入自訂提示框
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http; // 確保 http 套件已在 pubspec.yaml 中並 pub get
+import 'package:shared_preferences/shared_preferences.dart';
 
-// 定義使用者模型 (簡化版，只包含必要資訊)
+// 假設您的 ApiService 檔案路徑如下，如果目前未使用或路徑不同，則 login 等方法會直接使用 http.post
+// 如果 ApiService 存在且封裝了 baseUrl 和 token 處理，您可以取消註解並調整 login 等方法
+// import '../api/api_service.dart'; 
+import '../widgets/custom_alert_dialog.dart'; // 確保此路徑和檔案存在且 CustomAlertDialog 已按建議修改
+
+// User Model
 class User {
   final int id;
   final String name;
@@ -21,151 +26,16 @@ class User {
     required this.role,
   });
 
-  // 從 JSON 創建 User 實例的工廠方法
-  factory User.fromJson(Map<String, dynamic> json) {
+  factory User.fromJson(Map<String, dynamic> jsonMap) {
     return User(
-      id: json['id'],
-      name: json['name'],
-      username: json['username'],
-      email: json['email'],
-      role: json['role'],
-    );
-  }
-}
-
-// 認證狀態管理 Provider
-class AuthProvider with ChangeNotifier {
-  User? _user; // 當前登入的使用者資訊
-  String? _token; // JWT Token
-  bool _isLoading = false; // 載入狀態
-
-  User? get user => _user;
-  String? get token => _token;
-  bool get isLoading => _isLoading;
-  bool get isAuthenticated => _user != null && _token != null; // 判斷是否已登入
-  bool get isAdmin => _user?.role == 'admin'; // 判斷是否為管理員
-
-  // 初始化時載入本地儲存的 token 和使用者資訊
-  AuthProvider() {
-    _loadUserFromPrefs();
-  }
-
-  // 從 SharedPreferences 載入使用者資訊和 token
-  Future<void> _loadUserFromPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString('jwt_token');
-    final userJson = prefs.getString('user_info');
-    if (_token != null && userJson != null) {
-      _user = User.fromJson(json.decode(userJson));
-    }
-    notifyListeners(); // 通知所有監聽器狀態已更新
-  }
-
-  // 登入功能
-  Future<String?> login(BuildContext context, String username, String password) async {
-    _setLoading(true); // 設定載入狀態為 true
-    try {
-      // 呼叫 API 服務進行登入
-      final response = await ApiService.post('auth/login', {
-        'username': username,
-        'password': password,
-      });
-
-      // 儲存 token 和使用者資訊
-      _token = response['token'];
-      _user = User.fromJson(response['user']);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('jwt_token', _token!);
-      await prefs.setString('user_info', json.encode(_user!.toJson()));
-
-      notifyListeners(); // 通知所有監聽器狀態已更新
-      return null; // 登入成功，返回 null (無錯誤)
-    } catch (e) {
-      // 登入失敗，顯示錯誤訊息
-      CustomAlertDialog.show(context, '登入失敗', e.toString().replaceFirst('Exception: ', ''));
-      return e.toString(); // 返回錯誤訊息
-    } finally {
-      _setLoading(false); // 設定載入狀態為 false
-    }
-  }
-
-  // 登出功能
-  Future<void> logout(BuildContext context) async {
-    _user = null; // 清除使用者資訊
-    _token = null; // 清除 token
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('jwt_token'); // 從本地儲存中移除 token
-    await prefs.remove('user_info'); // 從本地儲存中移除使用者資訊
-    notifyListeners(); // 通知所有監聽器狀態已更新
-
-    // 導航回登入頁面 (假設登入頁是根路由)
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const LoginScreen()), // 替換為您的登入頁面
-      (Route<dynamic> route) => false,
+      id: jsonMap['id'] as int,
+      name: jsonMap['name'] as String,
+      username: jsonMap['username'] as String,
+      email: jsonMap['email'] as String,
+      role: jsonMap['role'] as String,
     );
   }
 
-  // 修改密碼功能
-  Future<String?> changePassword(BuildContext context, String oldPassword, String newPassword) async {
-    _setLoading(true);
-    try {
-      await ApiService.put('users/change-password', {
-        'oldPassword': oldPassword,
-        'newPassword': newPassword,
-      });
-      CustomAlertDialog.show(context, '成功', '密碼已成功修改。');
-      return null; // 成功，返回 null
-    } catch (e) {
-      CustomAlertDialog.show(context, '修改密碼失敗', e.toString().replaceFirst('Exception: ', ''));
-      return e.toString(); // 返回錯誤訊息
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  // 忘記密碼功能 (請求發送重設連結)
-  Future<String?> forgotPassword(BuildContext context, String email) async {
-    _setLoading(true);
-    try {
-      final response = await ApiService.post('auth/forgot-password', {
-        'email': email,
-      });
-      CustomAlertDialog.show(context, '請求成功', response['message'] ?? '密碼重設連結已發送。');
-      return null;
-    } catch (e) {
-      CustomAlertDialog.show(context, '請求失敗', e.toString().replaceFirst('Exception: ', ''));
-      return e.toString();
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  // 重設密碼功能
-  Future<String?> resetPassword(BuildContext context, String token, String newPassword) async {
-    _setLoading(true);
-    try {
-      final response = await ApiService.post('auth/reset-password/$token', {
-        'newPassword': newPassword,
-      });
-      CustomAlertDialog.show(context, '成功', response['message'] ?? '密碼已成功重設。');
-      return null;
-    } catch (e) {
-      CustomAlertDialog.show(context, '重設密碼失敗', e.toString().replaceFirst('Exception: ', ''));
-      return e.toString();
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  // 設定載入狀態
-  void _setLoading(bool value) {
-    _isLoading = value;
-    notifyListeners(); // 通知監聽器載入狀態已改變
-  }
-}
-
-// User 模型的擴展，用於 toJson 方法
-extension UserToJson on User {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -177,5 +47,232 @@ extension UserToJson on User {
   }
 }
 
-// 引入登入頁面，避免循環依賴
-import '../screens/login_screen.dart';
+class AuthProvider with ChangeNotifier {
+  String? _token;
+  User? _user;
+  bool _isLoading = false;
+
+  // API Base URL - 非常重要: 請根據您的後端位址修改!
+  // 如果 Flutter Web 和 Docker 在同一台機器，通常 'http://localhost:5000' 可以工作。
+  // 您之前截圖顯示使用了 172.20.50.102，請確保它是您後端服務的可訪問 IP。
+  static const String _apiBaseUrl = 'http://172.20.50.102:5000/api'; // 後端 API 的基礎 URL
+
+  String? get token => _token;
+  User? get user => _user;
+  bool get isLoading => _isLoading;
+  bool get isAuthenticated => _token != null && _user != null;
+  bool get isAdmin => _user?.role == 'admin';
+
+  AuthProvider() {
+    _loadAuthDataFromPrefs();
+  }
+
+  void _setLoading(bool value) {
+    if (_isLoading == value) return; // 避免不必要的通知
+    _isLoading = value;
+    notifyListeners();
+  }
+
+  Future<void> _loadAuthDataFromPrefs() async {
+    _setLoading(true); // 開始時設定載入狀態
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _token = prefs.getString('jwt_token');
+      final userJsonString = prefs.getString('user_info');
+      if (_token != null && userJsonString != null) {
+        _user = User.fromJson(json.decode(userJsonString) as Map<String, dynamic>);
+      } else {
+        // 如果 token 或 user info 不存在，確保它們是 null
+        _token = null;
+        _user = null;
+      }
+    } catch (e) {
+      // 如果從 prefs 載入時出錯 (例如 JSON 格式損壞)，清除它們
+      await _clearAuthDataOnLogout(); // 使用一個內部方法來清除 prefs
+      debugPrint("Error loading auth data from prefs, clearing stored data: $e");
+    } finally {
+      _setLoading(false); // 結束時設定載入狀態
+      notifyListeners(); // 確保在 finally 中通知，因為 _token 和 _user 可能已改變
+    }
+  }
+
+  Future<void> _saveAuthDataToPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_token != null) {
+      await prefs.setString('jwt_token', _token!);
+    } else {
+      await prefs.remove('jwt_token');
+    }
+    if (_user != null) {
+      await prefs.setString('user_info', json.encode(_user!.toJson()));
+    } else {
+      await prefs.remove('user_info');
+    }
+  }
+
+  Future<void> _clearAuthDataOnLogout() async {
+    _token = null;
+    _user = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('jwt_token');
+    await prefs.remove('user_info');
+  }
+
+  Future<String?> login(BuildContext context, String username, String password) async {
+    _setLoading(true);
+    try {
+      // 如果您使用 ApiService 類別，可以替換下面的 http.post
+      // final responseMap = await ApiService.post('$_apiBaseUrl/auth/login', {
+      final response = await http.post(
+        Uri.parse('$_apiBaseUrl/auth/login'),
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: json.encode({'username': username, 'password': password}),
+      );
+
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200 && responseData['token'] != null && responseData['user'] != null) {
+        _token = responseData['token'] as String;
+        _user = User.fromJson(responseData['user'] as Map<String, dynamic>);
+        await _saveAuthDataToPrefs();
+        notifyListeners(); // 狀態已改變，通知監聽者
+        return null; // 成功
+      } else {
+        throw Exception(responseData['message'] ?? '登入失敗或伺服器回應錯誤');
+      }
+    } catch (e) {
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => CustomAlertDialog(title: '登入失敗', content: errorMessage),
+        );
+      }
+      return errorMessage;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> logout() async { // 不需要 context 參數，因為導航應由 UI 層處理
+    await _clearAuthDataOnLogout();
+    notifyListeners();
+    // UI 層應該監聽 isAuthenticated 的變化，並在變為 false 時執行導航。
+  }
+
+  Future<String?> changePassword(BuildContext context, String oldPassword, String newPassword) async {
+    _setLoading(true);
+    if (_token == null) {
+      _setLoading(false);
+      return "使用者未登入，無法修改密碼";
+    }
+    try {
+      final response = await http.put( // 假設修改密碼是 PUT 請求
+        Uri.parse('$_apiBaseUrl/users/change-password'), // 假設端點是這個
+        headers: {
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Authorization': 'Bearer $_token', // 附帶 Token
+        },
+        body: json.encode({'oldPassword': oldPassword, 'newPassword': newPassword}),
+      );
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        if (context.mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => const CustomAlertDialog(title: '成功', content: '密碼已成功修改。'),
+          );
+        }
+        return null;
+      } else {
+        throw Exception(responseData['message'] ?? '修改密碼失敗');
+      }
+    } catch (e) {
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => CustomAlertDialog(title: '修改密碼失敗', content: errorMessage),
+        );
+      }
+      return errorMessage;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<String?> forgotPassword(BuildContext context, String email) async {
+    _setLoading(true);
+    try {
+      final response = await http.post(
+        Uri.parse('$_apiBaseUrl/auth/forgot-password'),
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: json.encode({'email': email}),
+      );
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        final message = (responseData['message'] as String?) ?? '如果電子郵件存在，密碼重設連結已發送。';
+        if (context.mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => CustomAlertDialog(title: '請求成功', content: message),
+          );
+        }
+        return null;
+      } else {
+         throw Exception(responseData['message'] ?? '請求失敗');
+      }
+    } catch (e) {
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => CustomAlertDialog(title: '請求失敗', content: errorMessage),
+        );
+      }
+      return errorMessage;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<String?> resetPassword(BuildContext context, String resetToken, String newPassword) async {
+    _setLoading(true);
+    try {
+      final response = await http.post(
+        Uri.parse('$_apiBaseUrl/auth/reset-password/$resetToken'), // 假設 token 是路徑參數
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: json.encode({'newPassword': newPassword}),
+      );
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        final message = (responseData['message'] as String?) ?? '密碼已成功重設。';
+        if (context.mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => CustomAlertDialog(title: '成功', content: message),
+          );
+        }
+        // 登入成功後，可以考慮自動登入或提示使用者重新登入
+        // logout(); // 清除舊狀態，讓使用者用新密碼登入
+        return null;
+      } else {
+        throw Exception(responseData['message'] ?? '重設密碼失敗');
+      }
+    } catch (e) {
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => CustomAlertDialog(title: '重設密碼失敗', content: errorMessage),
+        );
+      }
+      return errorMessage;
+    } finally {
+      _setLoading(false);
+    }
+  }
+}

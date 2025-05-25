@@ -1,56 +1,53 @@
 // frontend/lib/screens/login_screen.dart
 
-import 'package:flutter/material.dart'; // 引入 Flutter Material 設計
-import 'package:provider/provider.dart'; // 引入 Provider
-import '../providers/auth_provider.dart'; // 引入 AuthProvider
-import '../widgets/custom_alert_dialog.dart'; // 引入自訂提示框
-import 'home_screen.dart'; // 引入首頁
-import 'forgot_password_screen.dart'; // 引入忘記密碼頁面
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart'; // 導入真正的 AuthProvider
+// import '../widgets/custom_alert_dialog.dart'; // AuthProvider 內部已處理 Dialog，這裡通常不需要
+import 'home_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key}); // 構造函數
+  const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState(); // 創建狀態
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _formKey = GlobalKey<FormState>(); // 用於表單驗證的 Key
-  final TextEditingController _usernameController = TextEditingController(); // 帳號輸入控制器
-  final TextEditingController _passwordController = TextEditingController(); // 密碼輸入控制器
-  bool _obscureText = true; // 控制密碼顯示/隱藏
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _obscureText = true;
 
   @override
   void dispose() {
-    _usernameController.dispose(); // 釋放控制器資源
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  // 處理登入邏輯
   Future<void> _handleLogin() async {
-    if (_formKey.currentState!.validate()) { // 驗證表單
-      final authProvider = Provider.of<AuthProvider>(context, listen: false); // 獲取 AuthProvider 實例
+    if (_formKey.currentState!.validate()) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final errorMessage = await authProvider.login(
-        context,
+        context, // 將 context 傳遞給 AuthProvider，以便它能 showDialog
         _usernameController.text,
         _passwordController.text,
       );
 
-      if (errorMessage == null) {
-        // 登入成功，導航到首頁並移除所有之前的路由
+      if (errorMessage == null && mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const HomeScreen()),
           (Route<dynamic> route) => false,
         );
       }
-      // 錯誤訊息已在 AuthProvider 中透過 CustomAlertDialog 顯示
+      // 錯誤訊息顯示已在 AuthProvider 的 login 方法中處理
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // 監聽 AuthProvider 的 isLoading 狀態，用於顯示載入指示器
     final authProvider = Provider.of<AuthProvider>(context);
 
     return Scaffold(
@@ -67,7 +64,6 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                // 標題
                 const Text(
                   '歡迎登入',
                   textAlign: TextAlign.center,
@@ -78,8 +74,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 40.0),
-
-                // 帳號輸入框
                 TextFormField(
                   controller: _usernameController,
                   decoration: InputDecoration(
@@ -98,11 +92,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
                 const SizedBox(height: 20.0),
-
-                // 密碼輸入框
                 TextFormField(
                   controller: _passwordController,
-                  obscureText: _obscureText, // 控制密碼顯示/隱藏
+                  obscureText: _obscureText,
                   decoration: InputDecoration(
                     labelText: '密碼',
                     hintText: '請輸入您的密碼',
@@ -116,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       onPressed: () {
                         setState(() {
-                          _obscureText = !_obscureText; // 切換密碼顯示狀態
+                          _obscureText = !_obscureText;
                         });
                       },
                     ),
@@ -129,33 +121,28 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
                 const SizedBox(height: 30.0),
-
-                // 登入按鈕
                 ElevatedButton(
-                  onPressed: authProvider.isLoading ? null : _handleLogin, // 載入時禁用按鈕
+                  onPressed: authProvider.isLoading ? null : _handleLogin,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 15.0),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10.0),
                     ),
-                    backgroundColor: Colors.blueAccent, // 按鈕背景色
-                    foregroundColor: Colors.white, // 按鈕文字顏色
+                    backgroundColor: Colors.blueAccent,
+                    foregroundColor: Colors.white,
                   ),
                   child: authProvider.isLoading
                       ? const CircularProgressIndicator(
                           color: Colors.white,
-                        ) // 載入時顯示進度條
+                        )
                       : const Text(
                           '登入',
                           style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
                         ),
                 ),
                 const SizedBox(height: 15.0),
-
-                // 忘記密碼連結
                 TextButton(
                   onPressed: () {
-                    // 導航到忘記密碼頁面
                     Navigator.of(context).push(
                       MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
                     );

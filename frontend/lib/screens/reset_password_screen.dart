@@ -1,10 +1,10 @@
 // frontend/lib/screens/reset_password_screen.dart
 
-import 'package:flutter/material.dart'; // 引入 Flutter Material 設計
-import 'package:provider/provider.dart'; // 引入 Provider
-import '../providers/auth_provider.dart'; // 引入 AuthProvider
-import '../widgets/custom_alert_dialog.dart'; // 引入自訂提示框
-import 'login_screen.dart'; // 引入登入頁面
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart'; // 正確導入 AuthProvider
+import 'login_screen.dart'; // 如果需要導航到 LoginScreen
+import '../widgets/custom_alert_dialog.dart'; // 如果使用
 
 class ResetPasswordScreen extends StatefulWidget {
   final String? token; // 接收從 URL 傳遞過來的 token

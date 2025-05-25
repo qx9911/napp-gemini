@@ -1,27 +1,16 @@
-# frontend/pubspec.yaml
-
 name: napp_frontend
 description: A new Flutter project for NAPP System.
-<<<<<<< HEAD
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
-=======
-publish_to: 'none'
->>>>>>> 2fde534 (Add comprehensive .gitignore and initial project files)
 
 version: 1.0.0+1
 
 environment:
-<<<<<<< HEAD
   sdk: '>=3.0.0 <4.0.0' # 確保使用 Flutter 3.0.0 或更高版本
-=======
-  sdk: '>=3.0.0 <4.0.0'
->>>>>>> 2fde534 (Add comprehensive .gitignore and initial project files)
 
 dependencies:
   flutter:
     sdk: flutter
 
-<<<<<<< HEAD
   cupertino_icons: ^1.0.2 # iOS 風格圖標
 
   # 網路請求
@@ -35,6 +24,9 @@ dependencies:
 
   # 日期時間格式化
   intl: ^0.19.0
+
+  # Flutter Web URL 清理 (移除 URL 中的 #)
+  url_strategy: ^0.2.0 # <--- 新增的套件
 
   # 路由管理 (簡單的頁面導航，不使用複雜的 go_router 或 auto_route)
   # 這裡我們將使用 Navigator.push/pop
@@ -79,19 +71,3 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
-=======
-  cupertino_icons: ^1.0.2
-
-  http: ^1.1.0
-  provider: ^6.1.1
-  shared_preferences: ^2.2.2
-  intl: ^0.19.0
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^3.0.0
-
-flutter:
-  uses-material-design: true
->>>>>>> 2fde534 (Add comprehensive .gitignore and initial project files)
