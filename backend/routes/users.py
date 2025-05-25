@@ -2,7 +2,8 @@
 
 from flask import Blueprint, request, jsonify
 from models import User, db # 確保 User 模型和 db 實例已正確導入
-from utils.auth_decorators import jwt_required, admin_required # 確保這些裝飾器存在且功能正確
+from flask_jwt_extended import jwt_required # <--- 從 flask_jwt_extended 導入
+from utils.auth_decorators import admin_required # admin_required 仍然從您的 utils 導入
 from utils.email_service import send_email # 確保郵件服務配置正確
 import datetime
 # import traceback # 如果需要打印完整堆疊跟踪
