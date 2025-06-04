@@ -1,17 +1,17 @@
 # backend/routes/users.py
 
-from flask import Blueprint, request, jsonify
-from models import User, db # 確保 User 模型和 db 實例已正確導入
-from flask_jwt_extended import jwt_required # <--- 從 flask_jwt_extended 導入
-from utils.auth_decorators import admin_required # admin_required 仍然從您的 utils 導入
-from utils.email_service import send_email # 確保郵件服務配置正確
+from flask import Blueprint, request, jsonify, current_app
+from models import User, db
+from flask_jwt_extended import jwt_required, get_jwt_identity # 從 flask_jwt_extended 導入
+from utils.auth_decorators import admin_required
+from utils.email_service import send_email
 import datetime
-# import traceback # 如果需要打印完整堆疊跟踪
+# import traceback
 
-users_bp = Blueprint('users', __name__) # 藍圖名稱應與 app.py 中註冊時使用的名稱一致
+users_bp = Blueprint('users', __name__)
 
 # 3-1. 列出所有使用者清單 (需要管理員權限)
-@users_bp.route('/', methods=['GET', 'OPTIONS']) # 明確允許 OPTIONS
+@users_bp.route('/', methods=['GET', 'OPTIONS'])
 @jwt_required()
 @admin_required()
 def get_all_users():
@@ -28,23 +28,19 @@ def get_all_users():
             else:
                 print(f"--- User {u.username} is missing to_dict() method. Falling back to manual dict. ---")
                 users_data.append({
-                    'id': u.id,
-                    'name': u.name,
-                    'username': u.username,
-                    'email': u.email,
-                    'role': u.role 
-                    # 注意：不應返回 password_hash
+                    'id': u.id, 'name': u.name, 'username': u.username,
+                    'email': u.email, 'role': u.role
                 })
         
         print(f"--- Returning {len(users_data)} users data to client ---")
         return jsonify({"users": users_data, "total": len(users_data)}), 200
     except Exception as e:
         print(f"--- ERROR in get_all_users: {e} ---")
-        # traceback.print_exc() # 取消註解以在日誌中打印完整錯誤堆疊
+        # traceback.print_exc()
         return jsonify({"message": "獲取使用者列表時發生伺服器內部錯誤", "error": str(e)}), 500
 
 # 3-2. 新增使用者 (需要管理員權限)
-@users_bp.route('/', methods=['POST'])
+@users_bp.route('/', methods=['POST', 'OPTIONS']) # <--- 添加 OPTIONS
 @jwt_required()
 @admin_required()
 def create_user():
@@ -69,120 +65,90 @@ def create_user():
 
     if existing_user:
         if existing_user.username == username:
-            print(f"--- Username {username} already exists ---")
             return jsonify({"message": "帳號已存在"}), 409
         if existing_user.email == email:
-            print(f"--- Email {email} already exists ---")
             return jsonify({"message": "電子郵件已存在"}), 409
 
     try:
         print(f"--- Creating new user: {username} ---")
         new_user = User(name=name, username=username, email=email, role=role)
-        # !!! 重要：密碼必須雜湊儲存 !!!
-        # 這裡應該呼叫 new_user.set_password(password) 或類似方法
-        # 為了讓程式能跑通，暫時直接賦值，但這是不安全的，您必須修改
-        new_user.password = password # <--- 這是明文密碼，極度不安全！請修改為雜湊儲存
-        # 例如: new_user.set_password(password) 
+        new_user.set_password(password) # <--- 使用 set_password 進行雜湊
 
         db.session.add(new_user)
         db.session.commit()
         print(f"--- User {username} created successfully. ID: {new_user.id} ---")
 
         try:
-            print(f"--- Attempting to send welcome email to {new_user.email} ---")
-            send_email(
-                to=new_user.email,
-                subject='NAPP 系統：您的帳號已創建',
-                template=f"""
-                <p>您好 {new_user.name},</p>
-                <p>您的 NAPP 系統帳號已成功創建。</p>
-                <p>帳號: {new_user.username}</p>
-                <p>請使用您設定的密碼登入。</p>
-                """
-            )
-            print(f"--- Welcome email sent to {new_user.email} ---")
-        except Exception as email_error:
-            print(f"--- Failed to send welcome email to {new_user.email}: {email_error} ---")
-            # 即使郵件失敗，使用者創建也已成功，所以不在此處回滾或返回錯誤
+            send_email(to=new_user.email, subject='NAPP 系統：您的帳號已創建', template=f"帳號 {new_user.username} 已創建。")
+        except Exception as email_e:
+            print(f"--- Failed to send account creation email to {new_user.email}: {email_e} ---")
 
-        return jsonify({"message": "使用者新增成功", "user": new_user.to_dict() if hasattr(new_user, 'to_dict') else {'id': new_user.id, 'username': new_user.username}}), 201
+        return jsonify({"message": "使用者新增成功", "user": new_user.to_dict()}), 201
     except Exception as e:
         db.session.rollback()
         print(f"--- ERROR in create_user: {e} ---")
         # traceback.print_exc()
         return jsonify({"message": "新增使用者時發生伺服器內部錯誤", "error": str(e)}), 500
 
-# 3-3. 獲取單一使用者資訊 (用於編輯畫面，需要管理員權限)
-@users_bp.route('/<int:user_id>', methods=['GET', 'OPTIONS']) # 明確允許 OPTIONS
+# 3-3. 獲取單一使用者資訊
+@users_bp.route('/<int:user_id>', methods=['GET', 'OPTIONS'])
 @jwt_required()
 @admin_required()
 def get_user(user_id):
     print(f"--- Request received at GET /api/users/{user_id} (inside get_user function) ---")
     user = User.query.get(user_id)
     if not user:
-        print(f"--- User with ID {user_id} not found ---")
         return jsonify({"message": "找不到使用者"}), 404
-    
-    print(f"--- Returning data for user {user.username} ---")
-    return jsonify(user.to_dict() if hasattr(user, 'to_dict') else {'id': user.id, 'username': user.username}), 200
+    return jsonify(user.to_dict()), 200
 
-# 3-3. 編輯使用者 (需要管理員權限)
-@users_bp.route('/<int:user_id>', methods=['PUT'])
+# 3-3. 編輯使用者
+@users_bp.route('/<int:user_id>', methods=['PUT', 'OPTIONS']) # <--- 添加 OPTIONS
 @jwt_required()
 @admin_required()
 def update_user(user_id):
     print(f"--- Request received at PUT /api/users/{user_id} (inside update_user function) ---")
     user = User.query.get(user_id)
     if not user:
-        print(f"--- User with ID {user_id} not found for update ---")
         return jsonify({"message": "找不到使用者"}), 404
 
     data = request.get_json()
     if not data:
         return jsonify({"message": "請求中未包含 JSON 資料"}), 400
-
+    
+    print(f"--- Attempting to update user ID: {user_id} with data: {data} ---")
+    
     name = data.get('name')
-    username = data.get('username')
     email = data.get('email')
     role = data.get('role')
 
     try:
-        if username and username != user.username:
-            print(f"--- Checking if new username {username} already exists (excluding current user) ---")
-            existing_user_username = User.query.filter(User.username == username, User.id != user_id).first()
-            if existing_user_username:
-                print(f"--- New username {username} already taken ---")
-                return jsonify({"message": "帳號已存在"}), 409
-            user.username = username
-        
         if email and email != user.email:
-            print(f"--- Checking if new email {email} already exists (excluding current user) ---")
             existing_user_email = User.query.filter(User.email == email, User.id != user_id).first()
             if existing_user_email:
-                print(f"--- New email {email} already taken ---")
                 return jsonify({"message": "電子郵件已存在"}), 409
             user.email = email
+            print(f"--- User ID: {user_id}, email WILL BE updated to: {email} ---")
 
         if name:
             user.name = name
+            print(f"--- User ID: {user_id}, name WILL BE updated to: {name} ---")
         if role:
             user.role = role
+            print(f"--- User ID: {user_id}, role WILL BE updated to: {role} ---")
         
         db.session.commit()
-        print(f"--- User {user.username} (ID: {user_id}) updated successfully ---")
-        return jsonify({"message": "使用者資訊更新成功", "user": user.to_dict() if hasattr(user, 'to_dict') else {'id': user.id, 'username': user.username}}), 200
+        print(f"--- User {user.username} (ID: {user_id}) update committed to DB successfully. New name: {user.name} ---")
+        return jsonify({"message": "使用者資訊更新成功", "user": user.to_dict()}), 200
     except Exception as e:
         db.session.rollback()
         print(f"--- ERROR in update_user for ID {user_id}: {e} ---")
         # traceback.print_exc()
         return jsonify({"message": "更新使用者時發生伺服器內部錯誤", "error": str(e)}), 500
 
-# 4-1. 修改密碼 (登入使用者本人修改，需要認證)
-# 注意：這個路由通常會放在 auth_bp 中，或者一個專門的 account_bp 中，而不是 users_bp。
-# 但如果您的前端 auth_provider.dart 中的 ApiService.put 指向 'users/change-password'，則保持在此。
-@users_bp.route('/change-password', methods=['PUT'])
+# 4-1. 修改密碼
+@users_bp.route('/change-password', methods=['PUT', 'OPTIONS']) # <--- 添加 OPTIONS
 @jwt_required()
-def change_password_route(): # 避免與 AuthProvider 中的方法重名
+def change_password_route(): 
     print(f"--- Request received at PUT /api/users/change-password (inside change_password_route function) ---")
     data = request.get_json()
     if not data:
@@ -194,47 +160,41 @@ def change_password_route(): # 避免與 AuthProvider 中的方法重名
     if not all([old_password, new_password]):
         return jsonify({"message": "請提供舊密碼和新密碼"}), 400
 
-    from flask_jwt_extended import get_jwt_identity # 移到函式內部，避免在頂層循環導入問題
-    current_user_id = get_jwt_identity()
+    current_user_id_str = get_jwt_identity()
+    try:
+        current_user_id = int(current_user_id_str)
+    except ValueError:
+        print(f"--- Invalid user identity in JWT for password change: {current_user_id_str} ---")
+        return jsonify({"message": "無效的使用者身份"}), 422
+
     user = User.query.get(current_user_id)
 
     if not user:
         print(f"--- User with ID {current_user_id} not found for password change ---")
-        return jsonify({"message": "找不到使用者或認證失敗"}), 404 # 或 401
+        return jsonify({"message": "找不到使用者或認證失敗"}), 404
 
-    # !!! 重要：需要 User 模型中有 verify_password 方法 !!!
-    if not hasattr(user, 'check_password') or not callable(getattr(user, 'check_password')):
-         print(f"--- ERROR: User model is missing check_password method for user {user.username} ---")
-         return jsonify({"message": "伺服器配置錯誤：無法驗證密碼"}), 500
+    if not hasattr(user, 'verify_password') or not callable(getattr(user, 'verify_password')): # <--- 修正為 verify_password
+         print(f"--- ERROR: User model is missing verify_password method for user {user.username} ---")
+         return jsonify({"message": "伺服器配置錯誤：無法驗證密碼（開發者提示：User模型缺少verify_password）"}), 500
     
-    if not user.check_password(old_password): # 假設 User 模型有 check_password 方法
+    if not user.verify_password(old_password): # <--- 修正為 verify_password
         print(f"--- Old password incorrect for user {user.username} ---")
         return jsonify({"message": "舊密碼不正確"}), 401
+    
+    if len(new_password) < current_app.config.get('MIN_PASSWORD_LENGTH', 6):
+        return jsonify({"message": f"新密碼長度至少需要 {current_app.config.get('MIN_PASSWORD_LENGTH', 6)} 個字元"}), 400
 
     try:
-        # !!! 重要：新密碼必須雜湊儲存 !!!
-        # 這裡應該呼叫 user.set_password(new_password) 或類似方法
-        print(f"--- Setting new password for user {user.username} (THIS IS INSECURE IF NOT HASHED!) ---")
-        user.password = new_password # <--- 這是明文密碼，極度不安全！請修改為雜湊儲存
-        # 例如: user.set_password(new_password)
-
+        print(f"--- Setting new password for user {user.username} ---")
+        user.set_password(new_password) # <--- 使用 set_password 進行雜湊
+        
         db.session.commit()
         print(f"--- Password changed successfully for user {user.username} ---")
 
         try:
-            print(f"--- Attempting to send password change notification to {user.email} ---")
-            send_email(
-                to=user.email,
-                subject='NAPP 系統：您的密碼已成功修改',
-                template=f"""
-                <p>您好 {user.name},</p>
-                <p>您的 NAPP 系統密碼已成功修改。</p>
-                <p>如果您不是本人操作，請立即聯繫管理員。</p>
-                """
-            )
-            print(f"--- Password change notification sent to {user.email} ---")
-        except Exception as email_error:
-            print(f"--- Failed to send password change notification to {user.email}: {email_error} ---")
+            send_email(to=user.email, subject='NAPP 系統：您的密碼已修改', template=f"您的密碼已成功修改。")
+        except Exception as email_e:
+            print(f"--- Failed to send password change email to {user.email}: {email_e} ---")
 
         return jsonify({"message": "密碼修改成功"}), 200
     except Exception as e:
@@ -243,15 +203,14 @@ def change_password_route(): # 避免與 AuthProvider 中的方法重名
         # traceback.print_exc()
         return jsonify({"message": "修改密碼時發生伺服器內部錯誤", "error": str(e)}), 500
 
-# 刪除使用者 (需要管理員權限)
-@users_bp.route('/<int:user_id>', methods=['DELETE'])
+# 刪除使用者
+@users_bp.route('/<int:user_id>', methods=['DELETE', 'OPTIONS']) # <--- 添加 OPTIONS
 @jwt_required()
 @admin_required()
 def delete_user(user_id):
     print(f"--- Request received at DELETE /api/users/{user_id} (inside delete_user function) ---")
     user = User.query.get(user_id)
     if not user:
-        print(f"--- User with ID {user_id} not found for deletion ---")
         return jsonify({"message": "找不到使用者"}), 404
 
     try:
@@ -264,4 +223,4 @@ def delete_user(user_id):
         db.session.rollback()
         print(f"--- ERROR in delete_user for ID {user_id}: {e} ---")
         # traceback.print_exc()
-        return jsonify({"message": "刪除使用者時發生伺服器內部錯誤", "error": str(e)}), 500
+        return jsonify({"message": "刪除使用者時發生伺服器內部錯誤", "
